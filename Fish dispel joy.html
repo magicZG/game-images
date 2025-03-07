@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>融合三消游戏</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            margin: 0 auto;
+            animation: fadeIn 0.5s ease;
+        }
+
+        td {
+            width: 50px;
+            height: 50px;
+            border: 1px solid #ccc;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        td.selected {
+            background-color: #ffff99;
+        }
+
+        #score {
+            text-align: center;
+            font-size: 24px;
+            margin-top: 20px;
+        }
+
+        img {
+            width: 40px;
+            height: 40px;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <table id="gameBoard"></table>
+    <div id="score">得分: 0</div>
+    <script>
+        const ROWS = 8;
+        const COLS = 8;
+        const INITIAL_LEVELS = [1, 2, 3];
+        let board = [];
+        let selectedCell = null;
+        let score = 0;
+
+        const imageMap = {
+            1: 'https://raw.githubusercontent.com/magicZG/game-images/main/fish1.png',
+            2: 'https://raw.githubusercontent.com/magicZG/game-images/main/fish2.png',
+            3: 'https://raw.githubusercontent.com/magicZG/game-images/main/fish3.png',
+            4: 'https://raw.githubusercontent.com/magicZG/game-images/main/fish4.png',
+            5: 'https://raw.githubusercontent.com/magicZG/game-images/main/fish5.png'
+        };
+
+        // 初始化游戏板
+        function initBoard() {
+            do {
+                board = [];
+                for (let i = 0; i < ROWS; i++) {
+                    board[i] = [];
+                    for (let j = 0; j < COLS; j++) {
+                        board[i][j] = getRandomLevel();
+                    }
+                }
+            } while (hasThreeInRow()); // 确保初始化后没有三连
+
+            renderBoard();
+        }
+
+        // 检查是否有三个及以上相同元素横向或纵向相连
+        function hasThreeInRow() {
+            // 横向检查
+            for (let i = 0; i < ROWS; i++) {
+                for (let j = 0; j < COLS - 2; j++) {
+                    if (board[i][j] === board[i][j + 1] && board[i][j + 1] === board[i][j + 2]) {
+                        return true;
+                    }
+                }
+            }
+
+            // 纵向检查
+            for (let j = 0; j < COLS; j++) {
+                for (let i = 0; i < ROWS - 2; i++) {
+                    if (board[i][j] === board[i + 1][j] && board[i + 1][j] === board[i + 2][j]) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // 获取随机初始等级
+        function getRandomLevel() {
+            const randomIndex = Math.floor(Math.random() * INITIAL_LEVELS.length);
+            return INITIAL_LEVELS[randomIndex];
+        }
+
+        // 渲染游戏板
+        function renderBoard() {
+            const gameBoard = document.getElementById('gameBoard');
+            gameBoard.innerHTML = '';
+            for (let i = 0; i < ROWS; i++) {
+                const row = document.createElement('tr');
+                for (let j = 0; j < COLS; j++) {
+                    const cell = document.createElement('td');
+                    const img = document.createElement('img');
+                    img.src = imageMap[board[i][j]] || 'https://via.placeholder.com/40x40/FFD700/000000?text=NO+IMAGE';
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+                    cell.addEventListener('click', handleCellClick);
+                    cell.appendChild(img);
+                    row.appendChild(cell);
+                }
+                gameBoard.appendChild(row);
+            }
+        }
+
+        // 处理单元格点击事件
+        function handleCellClick() {
+            const row = parseInt(this.dataset.row);
+            const col = parseInt(this.dataset.col);
+
+            if (selectedCell === null) {
+                selectedCell = { row, col };
+                this.classList.add('selected');
+            } else {
+                const { row: prevRow, col: prevCol } = selectedCell;
+                const isAdjacent = (Math.abs(row - prevRow) === 1 && col === prevCol) || (Math.abs(col - prevCol) === 1 && row === prevRow);
+
+                if (isAdjacent) {
+                    [board[prevRow][prevCol], board[row][col]] = [board[row][col], board[prevRow][prevCol]];
+                    renderBoard();
+                    checkAndRemoveMatches();
+                }
+
+                const prevCell = document.querySelector(`td[data-row="${prevRow}"][data-col="${prevCol}"]`);
+                prevCell.classList.remove('selected');
+                selectedCell = null;
+            }
+        }
+
+        // 检查并消除匹配的元素
+        function checkAndRemoveMatches() {
+            let hasMatch = false;
+            const matchPositions = new Set();
+
+            // 水平检查
+            for (let i = 0; i < ROWS; i++) {
+                for (let j = 0; j < COLS - 2; j++) {
+                    if (board[i][j] === board[i][j + 1] && board[i][j + 1] === board[i][j + 2]) {
+                        matchPositions.add(`${i}-${j}`);
+                        matchPositions.add(`${i}-${j + 1}`);
+                        matchPositions.add(`${i}-${j + 2}`);
+                        hasMatch = true;
+                    }
+                }
+            }
+
+            // 垂直检查
+            for (let j = 0; j < COLS; j++) {
+                for (let i = 0; i < ROWS - 2; i++) {
+                    if (board[i][j] === board[i + 1][j] && board[i + 1][j] === board[i + 2][j]) {
+                        matchPositions.add(`${i}-${j}`);
+                        matchPositions.add(`${i + 1}-${j}`);
+                        matchPositions.add(`${i + 2}-${j}`);
+                        hasMatch = true;
+                    }
+                }
+            }
+
+            if (hasMatch) {
+                const processed = new Set();
+                matchPositions.forEach(pos => {
+                    const [row, col] = pos.split('-').map(Number);
+                    if (processed.has(pos)) return;
+                    processed.add(pos);
+
+                    const level = board[row][col];
+                    board[row][col] = Math.min(level + 1, 5);
+                    score += level * 10;
+                });
+
+                updateScore();
+                renderBoard();
+                
+                // 消除后再次检查棋盘，确保没有新三连
+                if (hasThreeInRow()) {
+                    adjustBoardAfterMatch();
+                }
+            }
+        }
+
+        // 调整消除后的棋盘，修复三连问题
+        function adjustBoardAfterMatch() {
+            for (let i = 0; i < ROWS; i++) {
+                for (let j = 0; j < COLS; j++) {
+                    // 横向检查
+                    if (j < COLS - 2 && board[i][j] === board[i][j + 1] && board[i][j + 1] === board[i][j + 2]) {
+                        board[i][j + 2] = getRandomLevel();
+                    }
+                    // 纵向检查
+                    if (i < ROWS - 2 && board[i][j] === board[i + 1][j] && board[i + 1][j] === board[i + 2][j]) {
+                        board[i + 2][j] = getRandomLevel();
+                    }
+                }
+            }
+            renderBoard();
+        }
+
+        // 更新得分显示
+        function updateScore() {
+            const scoreElement = document.getElementById('score');
+            scoreElement.textContent = `得分: ${score}`;
+        }
+
+        initBoard();
+    </script>
+</body>
+
+</html>
